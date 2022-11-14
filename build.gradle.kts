@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "me.konicai"
-version = "1.0-SNAPSHOT"
+version = "1.0"
 
 tasks {
     withType<JavaCompile> {
