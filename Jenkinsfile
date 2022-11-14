@@ -14,7 +14,7 @@ pipeline {
             }
             post {
                 success {
-                    archiveArtifacts 'build/libs/Floodgate-Whitelist.jar'
+                    archiveArtifacts 'build/libs/FloodgateWhitelist.jar'
                 }
             }
         }
