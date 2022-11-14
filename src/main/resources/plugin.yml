@@ -1,13 +1,10 @@
 main: me.konicai.floodgatewhitelist.FloodgateWhitelist
-name: floodgatewhitelist
-prefix: floodgatewhitelist
+name: floodgate-whitelist
+prefix: flist
 version: ${project_version}
 api-version: 1.14
 description: Whitelist Floodgate players that have not joined a Geyser server before
 authors:
   - Konicai
-
 depend:
   - floodgate
-softdepend:
-  - PlaceholderAPI

@@ -9,25 +9,34 @@ import cloud.commandframework.minecraft.extras.MinecraftHelp;
 import cloud.commandframework.paper.PaperCommandManager;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import lombok.Getter;
+import me.konicai.floodgatewhitelist.command.SubCommand;
 import me.konicai.floodgatewhitelist.command.WhitelistCommand;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.geysermc.floodgate.api.FloodgateApi;
+import org.geysermc.floodgate.api.player.FloodgatePlayer;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
-import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-public class FloodgateWhitelist extends JavaPlugin {
+public class FloodgateWhitelist extends JavaPlugin implements Listener {
 
+    private static final int METRICS_ID = 16868;
     private static final String ROOT_COMMAND = "flist";
     private static final Object DUMMY = new Object();
 
@@ -36,7 +45,10 @@ public class FloodgateWhitelist extends JavaPlugin {
     private BukkitAudiences bukkitAudiences;
     private FloodgateApi floodgateApi;
 
-    private Cache<String, Object> temporaryWhitelist;
+    @Getter
+    private final Cache<String, Object> temporaryWhitelist = CacheBuilder.newBuilder()
+        .expireAfterWrite(30, TimeUnit.MINUTES)
+        .build();
 
     @Override
     public void onEnable() {
@@ -44,9 +56,7 @@ public class FloodgateWhitelist extends JavaPlugin {
         server = Bukkit.getServer();
         bukkitAudiences = BukkitAudiences.create(this);
         floodgateApi = FloodgateApi.getInstance();
-
-        Duration expire = Duration.ofMinutes(30);
-        temporaryWhitelist = CacheBuilder.newBuilder().expireAfterWrite(expire).build();
+        new Metrics(this, METRICS_ID);
 
         // Yes, this is not Paper-exclusive plugin. Cloud handles this gracefully.
         PaperCommandManager<CommandSender> commandManager;
@@ -79,7 +89,7 @@ public class FloodgateWhitelist extends JavaPlugin {
             .withCommandExecutionHandler()
             .apply(commandManager, bukkitAudiences::sender);
 
-        MinecraftHelp<CommandSender> minecraftHelp = new MinecraftHelp<>(
+        MinecraftHelp<CommandSender> help = new MinecraftHelp<>(
             "/" + ROOT_COMMAND + " help",
             bukkitAudiences::sender,
             commandManager
@@ -89,26 +99,35 @@ public class FloodgateWhitelist extends JavaPlugin {
 
         commandManager.command(commandBuilder
             .literal("help")
-            .permission("help")
+            .permission(SubCommand.BASE_PERMISSION + ".help")
             .argument(StringArgument.optional("query", StringArgument.StringMode.GREEDY))
-            .handler(context -> minecraftHelp.queryCommands(context.getOrDefault("query", ""), context.getSender()))
+            .handler(context ->
+                help.queryCommands(SubCommand.argument(context, "query", ""), context.getSender()))
         );
 
-        new WhitelistCommand(logger, bukkitAudiences, this).register(commandManager, commandBuilder);
-    }
-
-    @Override
-    public void onDisable() {
-        super.onDisable();
+        new WhitelistCommand(this).register(commandManager, commandBuilder);
     }
 
     public void cache(String gamertag) {
-        String prefix = floodgateApi.getPlayerPrefix();
-        if (gamertag.startsWith(prefix)) {
-            temporaryWhitelist.put(gamertag, DUMMY);
-        } else {
-            temporaryWhitelist.put(prefix + gamertag, DUMMY);
+        temporaryWhitelist.put(removePrefix(gamertag), DUMMY);
+    }
+
+    public boolean removeCache(String gamertag) {
+        gamertag = removePrefix(gamertag);
+        boolean cached = temporaryWhitelist.getIfPresent(gamertag) != null;
+        if (cached) {
+            temporaryWhitelist.invalidate(gamertag);
         }
+        return cached;
+
+    }
+
+    public void clearCache() {
+        temporaryWhitelist.invalidateAll();
+    }
+
+    public String[] cacheEntries() {
+        return temporaryWhitelist.asMap().keySet().toArray(new String[0]);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -118,18 +137,37 @@ public class FloodgateWhitelist extends JavaPlugin {
         }
 
         Player player = event.getPlayer();
-        String username = player.getName();
+        if (!floodgateApi.isFloodgatePlayer(player.getUniqueId())) {
+            return;
+        }
 
-        if (temporaryWhitelist.getIfPresent(username) != null) {
+        String username = player.getName();
+        String gamertag = removePrefix(username);
+
+        if (temporaryWhitelist.getIfPresent(gamertag) != null) {
+            player.setWhitelisted(true);
+            temporaryWhitelist.invalidate(gamertag);
             event.setResult(PlayerLoginEvent.Result.ALLOWED);
-            server.getScheduler().runTask(this, () -> {
-                whitelistOnlinePlayer(player.getUniqueId());
-                temporaryWhitelist.invalidate(username);
-            });
+            logger.info(username + " (" + player.getUniqueId() + ") has been added to the whitelist.");
         }
     }
 
-    public void whitelistOnlinePlayer(UUID uuid) {
-        server.dispatchCommand(server.getConsoleSender(), "whitelist add " + uuid);
+    @NonNull
+    public String prefixGamertag(@NonNull String gamertag) {
+        if (gamertag.startsWith(floodgateApi.getPlayerPrefix())) {
+            return gamertag;
+        } else {
+            return floodgateApi.getPlayerPrefix() + gamertag;
+        }
+    }
+
+    @NotNull
+    public String removePrefix(@NotNull String gamertag) {
+        String prefix = floodgateApi.getPlayerPrefix();
+        if (gamertag.startsWith(prefix)) {
+            return gamertag.replaceFirst(prefix, gamertag);
+        } else {
+            return gamertag;
+        }
     }
 }
