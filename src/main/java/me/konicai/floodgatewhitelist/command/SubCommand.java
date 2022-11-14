@@ -12,7 +12,7 @@ public abstract class SubCommand {
 
     public abstract void register(CommandManager<CommandSender> manager, Command.Builder<CommandSender> defaultBuilder);
 
-    public String makePermission(String subNode) {
+    public static String makePermission(String subNode) {
         return BASE_PERMISSION + "." + subNode;
     }
 

@@ -25,11 +25,8 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.geysermc.floodgate.api.FloodgateApi;
-import org.geysermc.floodgate.api.player.FloodgatePlayer;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
@@ -99,7 +96,7 @@ public class FloodgateWhitelist extends JavaPlugin implements Listener {
 
         commandManager.command(commandBuilder
             .literal("help")
-            .permission(SubCommand.BASE_PERMISSION + ".help")
+            .permission(SubCommand.makePermission("help"))
             .argument(StringArgument.optional("query", StringArgument.StringMode.GREEDY))
             .handler(context ->
                 help.queryCommands(SubCommand.argument(context, "query", ""), context.getSender()))
