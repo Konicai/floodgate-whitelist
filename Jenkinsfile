@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-        jdk 'Jdk8'
+        jdk 'Jdk17'
         gradle 'gradle'
     }
     
@@ -14,7 +14,7 @@ pipeline {
             }
             post {
                 success {
-                    archiveArtifacts 'build/libs/Floodgate-Whitelist.jar'
+                    archiveArtifacts 'build/libs/FloodgateWhitelist.jar'
                 }
             }
         }
