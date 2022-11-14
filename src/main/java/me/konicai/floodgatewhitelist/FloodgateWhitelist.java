@@ -25,6 +25,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.geysermc.floodgate.api.FloodgateApi;
+import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
@@ -103,6 +104,8 @@ public class FloodgateWhitelist extends JavaPlugin implements Listener {
         );
 
         new WhitelistCommand(this).register(commandManager, commandBuilder);
+
+        server.getPluginManager().registerEvents(this, this);
     }
 
     public void cache(String gamertag) {
@@ -127,14 +130,16 @@ public class FloodgateWhitelist extends JavaPlugin implements Listener {
         return temporaryWhitelist.asMap().keySet().toArray(new String[0]);
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlayerLogin(PlayerLoginEvent event) {
         if (event.getResult() != PlayerLoginEvent.Result.KICK_WHITELIST) {
             return;
         }
 
         Player player = event.getPlayer();
-        if (!floodgateApi.isFloodgatePlayer(player.getUniqueId())) {
+        FloodgatePlayer floodgatePlayer = floodgateApi.getPlayer(player.getUniqueId());
+        if (floodgatePlayer == null || floodgatePlayer.isLinked()) {
+            // Java account
             return;
         }
 

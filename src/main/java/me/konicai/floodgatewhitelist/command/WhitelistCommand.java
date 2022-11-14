@@ -44,7 +44,6 @@ public class WhitelistCommand extends SubCommand {
                 gamertag = gamertag.replace(' ', '_');
                 Player player = getPlayer(gamertag);
                 if (player != null) {
-                    // #getPlayer may return null for offline players... so it may not?
                     UUID uuid = player.getUniqueId();
                     if (floodgateApi.isFloodgateId(uuid)) {
                         player.setWhitelisted(true);
