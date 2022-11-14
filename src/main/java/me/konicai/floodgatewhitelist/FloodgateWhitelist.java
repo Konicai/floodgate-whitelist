@@ -167,7 +167,7 @@ public class FloodgateWhitelist extends JavaPlugin implements Listener {
     public String removePrefix(@NotNull String gamertag) {
         String prefix = floodgateApi.getPlayerPrefix();
         if (gamertag.startsWith(prefix)) {
-            return gamertag.replaceFirst(prefix, gamertag);
+            return gamertag.replaceFirst(prefix, "");
         } else {
             return gamertag;
         }

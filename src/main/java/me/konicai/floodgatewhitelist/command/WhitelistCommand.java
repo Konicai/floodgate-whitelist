@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.geysermc.floodgate.api.FloodgateApi;
 
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -37,7 +38,7 @@ public class WhitelistCommand extends SubCommand {
         manager.command(defaultBuilder
             .literal(ADD)
             .permission(makePermission(REMOVE))
-            .argument(StringArgument.greedy("gamertag"))
+            .argument(StringArgument.quoted("gamertag"))
             .handler(context -> {
                 CommandSender sender = context.getSender();
                 String gamertag = context.get("gamertag");
@@ -68,7 +69,10 @@ public class WhitelistCommand extends SubCommand {
         manager.command(defaultBuilder
             .literal(REMOVE)
             .permission(makePermission(REMOVE))
-            .argument(StringArgument.greedy("gamertag"))
+            .argument(StringArgument.<CommandSender>newBuilder("gamertag")
+                .quoted()
+                .withSuggestionsProvider(($, $$) -> Arrays.asList(whitelist.cacheEntries()))
+                .build())
             .handler(context -> {
                 CommandSender sender = context.getSender();
                 String gamertag = context.get("gamertag");
